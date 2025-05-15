@@ -2,7 +2,7 @@
 // @name            Odoo Toggle Developer Mode
 // @name:tr         Odoo Geliştirici Moduna Geçme
 // @namespace       https://github.com/sipsak
-// @version         1.0
+// @version         1.1
 // @description     Adds a button to enable developer mode in the Odoo menu
 // @description:tr  Odoo menüsüne geliştirici modunu etkinleştirme butonu ekler
 // @author          Burak Şipşak
@@ -27,7 +27,8 @@
         if (document.querySelector('#dev-mode-button')) return;
 
         const url = new URL(window.location.href);
-        const isDebugActive = url.searchParams.get('debug') === '1';
+        const debugValue = url.searchParams.get('debug');
+        const isDebugActive = debugValue === '1';
 
         // Dinamik title
         const titleText = isDebugActive
@@ -56,12 +57,17 @@
         // Tıklama işlevi
         newButton.addEventListener('click', () => {
             const currentUrl = new URL(window.location.href);
-            if (currentUrl.searchParams.has('debug')) {
-                currentUrl.searchParams.delete('debug');
-            } else {
+
+            // Önce debug parametresini tamamen kaldır
+            currentUrl.searchParams.delete('debug');
+
+            // Yeniden ekle veya ekleme
+            const shouldEnable = debugValue !== '1';
+            if (shouldEnable) {
                 currentUrl.searchParams.set('debug', '1');
             }
 
+            // Yönlendirme
             if (currentUrl.href.includes('#')) {
                 const [base, hash] = currentUrl.href.split('#');
                 window.location.href = `${base}#${hash}`;
