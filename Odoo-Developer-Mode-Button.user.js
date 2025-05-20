@@ -2,7 +2,7 @@
 // @name            Odoo Developer Mode Button
 // @name:tr         Odoo Geliştirici Modu Butonu
 // @namespace       https://github.com/sipsak
-// @version         1.3
+// @version         1.4
 // @description     Adds a button to the Odoo menu to switch between developer modes.
 // @description:tr  Odoo menüsüne geliştirici modları arasında geçiş yapmaya yarayan bir buton ekler.
 // @author          Burak Şipşak
@@ -17,10 +17,15 @@
 (function () {
     'use strict';
 
-    function waitForSystrayAndInsert() {
+    function checkAndInsertButton() {
         const systray = document.querySelector('.o_menu_systray');
-        if (!systray) return setTimeout(waitForSystrayAndInsert, 500);
-        if (document.querySelector('#dev-mode-button')) return;
+        if (systray && !document.querySelector('#dev-mode-button')) {
+            insertDevModeButton(systray);
+        }
+    }
+
+    function insertDevModeButton(systray) {
+        if (!systray || document.querySelector('#dev-mode-button')) return;
 
         let isTurkish = false;
 
@@ -202,7 +207,7 @@
             }
         });
 
-        const observer = new MutationObserver((mutations) => {
+        const closeMenuObserver = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
                 if (mutation.type === 'childList' && mutation.target !== outerDiv) {
                     if (mutation.addedNodes.length) {
@@ -244,7 +249,7 @@
             }
         });
 
-        observer.observe(document.body, {
+        closeMenuObserver.observe(document.body, {
             childList: true,
             subtree: true,
             attributes: true,
@@ -261,9 +266,65 @@
         }
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', waitForSystrayAndInsert);
-    } else {
-        setTimeout(waitForSystrayAndInsert, 300);
+    function waitForSystrayAndInsert() {
+        const systray = document.querySelector('.o_menu_systray');
+        if (!systray) return setTimeout(waitForSystrayAndInsert, 500);
+
+        insertDevModeButton(systray);
     }
+
+    function startObservingForSystray() {
+        const bodyObserver = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                if (mutation.type === 'childList') {
+                    const systray = document.querySelector('.o_menu_systray');
+                    if (systray && !document.querySelector('#dev-mode-button')) {
+                        insertDevModeButton(systray);
+                    }
+                }
+            }
+        });
+
+        bodyObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    function listenForRouteChanges() {
+        window.addEventListener('hashchange', () => {
+            setTimeout(checkAndInsertButton, 500);
+        });
+
+        const originalPushState = window.history.pushState;
+        const originalReplaceState = window.history.replaceState;
+
+        window.history.pushState = function() {
+            originalPushState.apply(this, arguments);
+            setTimeout(checkAndInsertButton, 500);
+        };
+
+        window.history.replaceState = function() {
+            originalReplaceState.apply(this, arguments);
+            setTimeout(checkAndInsertButton, 500);
+        };
+
+        window.addEventListener('load', () => {
+            setTimeout(checkAndInsertButton, 500);
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            waitForSystrayAndInsert();
+            startObservingForSystray();
+            listenForRouteChanges();
+        });
+    } else {
+        waitForSystrayAndInsert();
+        startObservingForSystray();
+        listenForRouteChanges();
+    }
+
+    setInterval(checkAndInsertButton, 500);
 })();
